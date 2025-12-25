@@ -315,6 +315,7 @@ $_LANG['cfclient.actions.register.provider_exists'] = 'DNS records already exist
 $_LANG['cfclient.actions.register.success'] = 'Domain registered successfully.';
 $_LANG['cfclient.actions.register.vpn_blocked'] = 'VPN or proxy detected. Please disable it and try again.';
 $_LANG['cfclient.actions.register.datacenter_blocked'] = 'Your IP appears to be from a datacenter. Please use a residential network.';
+$_LANG['cfclient.actions.dns.vpn_blocked'] = 'VPN or proxy detected. Please disable it before making DNS changes.';
 
 $_LANG['cfclient.breadcrumb.home'] = 'Home';
 $_LANG['cfclient.breadcrumb.client_page'] = 'My subdomain manager';

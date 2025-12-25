@@ -62,12 +62,44 @@ class CfVpnDetectionService
     }
     
     /**
-     * 检查VPN检测是否启用
+     * 检查VPN检测是否启用（注册功能）
      */
     public static function isEnabled(array $settings): bool
     {
         $value = $settings['enable_vpn_detection'] ?? '';
         return self::settingToBool($value);
+    }
+    
+    /**
+     * 检查DNS操作VPN检测是否启用
+     */
+    public static function isDnsCheckEnabled(array $settings): bool
+    {
+        // 首先必须启用VPN检测总开关
+        if (!self::isEnabled($settings)) {
+            return false;
+        }
+        // 然后检查DNS操作专用开关
+        $value = $settings['vpn_detection_dns_enabled'] ?? '';
+        return self::settingToBool($value);
+    }
+    
+    /**
+     * 检查DNS操作是否应被阻止（用于DNS创建/更新/删除）
+     *
+     * @param string $ip 用户IP地址
+     * @param array $settings 模块配置
+     * @return array ['blocked' => bool, 'reason' => string, 'details' => array]
+     */
+    public static function shouldBlockDnsOperation(string $ip, array $settings): array
+    {
+        // 检查DNS操作VPN检测是否启用
+        if (!self::isDnsCheckEnabled($settings)) {
+            return ['blocked' => false, 'reason' => 'dns_check_disabled'];
+        }
+        
+        // 复用注册检测逻辑
+        return self::shouldBlockRegistration($ip, $settings);
     }
     
     /**

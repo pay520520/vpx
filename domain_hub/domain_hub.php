@@ -1704,6 +1704,12 @@ function domain_hub_config() {
                 "Default" => "24",
                 "Description" => "同一IP检测结果的缓存时长，减少API调用次数。建议12-48小时。",
             ],
+            "vpn_detection_dns_enabled" => [
+                "FriendlyName" => "DNS操作启用VPN检测",
+                "Type" => "yesno",
+                "Default" => "no",
+                "Description" => "开启后，用户添加/修改/删除DNS记录时也将检测VPN/代理。",
+            ],
         ]
     ];
 }
