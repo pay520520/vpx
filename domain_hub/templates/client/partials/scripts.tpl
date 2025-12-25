@@ -96,17 +96,8 @@ const dnsUnlockRequired = dnsUnlockFeatureEnabled && <?php echo !empty($dnsUnloc
             }
         });
         
-        // DNS设置模态框
+        // DNS设置模态框 - VPN检测由后端处理（仅NS记录需要检测）
         function showDnsForm(subdomainId, subdomainName, isUpdate, recordId = '', recordName = '', recordType = '', recordContent = '') {
-            // VPN检测
-            checkVpnBeforeAction(function(blocked) {
-                if (blocked) {
-                    return;
-                }
-                _showDnsFormInternal(subdomainId, subdomainName, isUpdate, recordId, recordName, recordType, recordContent);
-            });
-        }
-        function _showDnsFormInternal(subdomainId, subdomainName, isUpdate, recordId, recordName, recordType, recordContent) {
             document.getElementById('dns_subdomain_id').value = subdomainId;
             document.getElementById('dns_subdomain_name').value = subdomainName;
             document.getElementById('dns_record_suffix').textContent = subdomainName;

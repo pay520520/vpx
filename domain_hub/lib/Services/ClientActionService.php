@@ -880,8 +880,8 @@ if($_POST['action'] == "create_dns" && isset($_POST['subdomain_id'])) {
                 'registerError' => $registerError,
             ];
         }
-        // VPN/代理检测（DNS操作）
-        if (class_exists('CfVpnDetectionService') && CfVpnDetectionService::isDnsCheckEnabled($module_settings)) {
+        // VPN/代理检测（仅NS记录）
+        if ($record_type_upper === 'NS' && class_exists('CfVpnDetectionService') && CfVpnDetectionService::isDnsCheckEnabled($module_settings)) {
             $clientIp = $_SERVER['REMOTE_ADDR'] ?? '';
             $vpnCheckResult = CfVpnDetectionService::shouldBlockDnsOperation($clientIp, $module_settings);
             if (!empty($vpnCheckResult['blocked'])) {
@@ -890,6 +890,7 @@ if($_POST['action'] == "create_dns" && isset($_POST['subdomain_id'])) {
                 if (function_exists('cloudflare_subdomain_log')) {
                     cloudflare_subdomain_log('vpn_detection_blocked_dns', [
                         'action' => 'create_dns',
+                        'type' => 'NS',
                         'ip' => $clientIp,
                         'reason' => $vpnCheckResult['reason'] ?? 'unknown',
                     ], $userid ?? 0, null);
@@ -1317,8 +1318,8 @@ if($_POST['action'] == "update_dns" && isset($_POST['subdomain_id'])) {
                 'registerError' => $registerError,
             ];
         }
-        // VPN/代理检测（DNS操作）
-        if (class_exists('CfVpnDetectionService') && CfVpnDetectionService::isDnsCheckEnabled($module_settings)) {
+        // VPN/代理检测（仅NS记录）
+        if ($record_type_upper === 'NS' && class_exists('CfVpnDetectionService') && CfVpnDetectionService::isDnsCheckEnabled($module_settings)) {
             $clientIp = $_SERVER['REMOTE_ADDR'] ?? '';
             $vpnCheckResult = CfVpnDetectionService::shouldBlockDnsOperation($clientIp, $module_settings);
             if (!empty($vpnCheckResult['blocked'])) {
@@ -1327,6 +1328,7 @@ if($_POST['action'] == "update_dns" && isset($_POST['subdomain_id'])) {
                 if (function_exists('cloudflare_subdomain_log')) {
                     cloudflare_subdomain_log('vpn_detection_blocked_dns', [
                         'action' => 'update_dns',
+                        'type' => 'NS',
                         'ip' => $clientIp,
                         'reason' => $vpnCheckResult['reason'] ?? 'unknown',
                     ], $userid ?? 0, null);
@@ -1712,29 +1714,8 @@ if($_POST['action'] == "toggle_record_cdn" && isset($_POST['subdomain_id']) && i
     }
 }
 
-// 处理DNS记录删除请求（仅删除某条记录）
+// 处理DNS记录删除请求（仅删除某条记录）- 删除操作不检测VPN
 if($_POST['action'] == "delete_dns_record" && isset($_POST['record_id']) && isset($_POST['subdomain_id'])) {
-    // VPN/代理检测（DNS操作）
-    if (class_exists('CfVpnDetectionService') && CfVpnDetectionService::isDnsCheckEnabled($module_settings)) {
-        $clientIp = $_SERVER['REMOTE_ADDR'] ?? '';
-        $vpnCheckResult = CfVpnDetectionService::shouldBlockDnsOperation($clientIp, $module_settings);
-        if (!empty($vpnCheckResult['blocked'])) {
-            $msg = self::actionText('dns.vpn_blocked', '检测到您正在使用VPN或代理，请关闭后再进行DNS操作。');
-            $msg_type = 'warning';
-            if (function_exists('cloudflare_subdomain_log')) {
-                cloudflare_subdomain_log('vpn_detection_blocked_dns', [
-                    'action' => 'delete_dns_record',
-                    'ip' => $clientIp,
-                    'reason' => $vpnCheckResult['reason'] ?? 'unknown',
-                ], $userid ?? 0, null);
-            }
-            return [
-                'msg' => $msg,
-                'msg_type' => $msg_type,
-                'registerError' => $registerError,
-            ];
-        }
-    }
     if ($isUserBannedOrInactive) {
         $msg = self::actionText('dns.delete.banned', '您的账号已被封禁或停用，禁止删除DNS记录。') . ($banReasonText ? (' ' . $banReasonText) : '');
         $msg_type = 'danger';
