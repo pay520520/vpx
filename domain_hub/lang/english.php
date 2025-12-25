@@ -563,6 +563,7 @@ $_LANG['cfclient.actions.delete.pending'] = 'A deletion request has already been
 $_LANG['cfclient.actions.delete.already_deleted'] = 'This domain has already been removed.';
 $_LANG['cfclient.actions.delete.gift_locked'] = 'The domain is locked (e.g., gifting in progress) and cannot be deleted right now.';
 $_LANG['cfclient.actions.delete.history_blocked'] = 'Only domains that have never created DNS records can be deleted automatically. Please open a support ticket for assistance.';
+$_LANG['cfclient.actions.delete.current_dns_blocked'] = 'Please delete all DNS records before submitting deletion request.';
 $_LANG['cfclient.actions.delete.request_submitted'] = 'Deletion request submitted. The system will clean up the domain automatically.';
 $_LANG['cfclient.actions.dns.cdn.domain.banned'] = 'Your account is suspended and cannot change CDN status.';
 $_LANG['cfclient.actions.dns.cdn.domain.control_failed'] = 'Failed to update CDN status: %s';

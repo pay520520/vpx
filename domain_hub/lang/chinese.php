@@ -562,6 +562,7 @@ $_LANG['cfclient.actions.delete.pending'] = '您已提交删除申请，请等�
 $_LANG['cfclient.actions.delete.already_deleted'] = '该域名已被清理。';
 $_LANG['cfclient.actions.delete.gift_locked'] = '域名处于转赠或锁定状态，暂无法删除。';
 $_LANG['cfclient.actions.delete.history_blocked'] = '仅支持从未设置过解析记录的域名自助删除，如需帮助请提交工单。';
+$_LANG['cfclient.actions.delete.current_dns_blocked'] = '请先删除所有DNS解析记录后再提交删除申请。';
 $_LANG['cfclient.actions.delete.request_submitted'] = '删除申请已提交，系统将自动清理该域名。';
 $_LANG['cfclient.actions.dns.cdn.domain.banned'] = '您的账号已被封禁或停用，禁止更改CDN代理状态。';
 $_LANG['cfclient.actions.dns.cdn.domain.control_failed'] = 'CDN控制失败：%s';

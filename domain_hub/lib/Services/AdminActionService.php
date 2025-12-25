@@ -1305,6 +1305,8 @@ class CfAdminActionService
         $disableDnsWrite = (($_POST['disable_dns_write'] ?? '') === '1') ? '1' : '0';
         $hideInviteFeature = (($_POST['hide_invite_feature'] ?? '') === '1') ? '1' : '0';
         $enableClientDelete = (($_POST['enable_client_domain_delete'] ?? '') === '1') ? '1' : '0';
+        $clientDeleteModeRaw = trim($_POST['client_delete_mode'] ?? 'strict');
+        $clientDeleteMode = in_array($clientDeleteModeRaw, ['strict', 'current', 'any'], true) ? $clientDeleteModeRaw : 'strict';
         $syncInviteLimitUpOnly = (($_POST['sync_invite_limit_up_only'] ?? '') === '1');
         $clientPageSizeInput = intval($_POST['client_page_size'] ?? ($moduleSettings['client_page_size'] ?? 20));
         $clientPageSize = max(1, min(20, $clientPageSizeInput));
@@ -1333,6 +1335,7 @@ class CfAdminActionService
                 'disable_dns_write' => $disableDnsWrite,
                 'hide_invite_feature' => $hideInviteFeature,
                 'enable_client_domain_delete' => $enableClientDelete,
+                'client_delete_mode' => $clientDeleteMode,
                 'sync_invite_limit_up_only' => $syncInviteLimitUpOnly ? '1' : '0',
                 'client_page_size' => (string) $clientPageSize,
                 'enable_dns_unlock' => $enableDnsUnlockFeature ? '1' : '0',
@@ -1356,6 +1359,7 @@ class CfAdminActionService
                     'disable_dns_write' => $disableDnsWrite,
                     'hide_invite_feature' => $hideInviteFeature,
                     'enable_client_domain_delete' => $enableClientDelete,
+                    'client_delete_mode' => $clientDeleteMode,
                     'maintenance_message_length' => strlen($maintenanceMsg),
                     'client_page_size' => $clientPageSize,
                     'dns_unlock_share_enabled' => $dnsUnlockShareEnabledSetting ? 1 : 0,

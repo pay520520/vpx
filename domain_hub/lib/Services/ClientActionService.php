@@ -1236,17 +1236,47 @@ if($_POST['action'] == 'delete_subdomain' && isset($_POST['subdomain_id'])) {
                 $msg_type = 'warning';
             } else {
                 $statusLower = strtolower((string)($subdomain->status ?? ''));
+                
+                // 获取自助删除模式配置
+                $deleteMode = strtolower(trim($module_settings['client_delete_mode'] ?? 'strict'));
+                if (!in_array($deleteMode, ['strict', 'current', 'any'], true)) {
+                    $deleteMode = 'strict';
+                }
+                
+                // 检查DNS历史和当前解析记录
                 $everHadDns = intval($subdomain->has_dns_history ?? 0) === 1;
-                if (!$everHadDns) {
-                    try {
-                        $currentDnsExists = Capsule::table('mod_cloudflare_dns_records')
-                            ->where('subdomain_id', $subdomainId)
-                            ->exists();
-                        if ($currentDnsExists) {
-                            $everHadDns = true;
-                            CfSubdomainService::markHasDnsHistory($subdomainId);
-                        }
-                    } catch (\Throwable $e) {
+                $currentDnsExists = false;
+                try {
+                    $currentDnsExists = Capsule::table('mod_cloudflare_dns_records')
+                        ->where('subdomain_id', $subdomainId)
+                        ->exists();
+                    if ($currentDnsExists && !$everHadDns) {
+                        $everHadDns = true;
+                        CfSubdomainService::markHasDnsHistory($subdomainId);
+                    }
+                } catch (\Throwable $e) {
+                }
+                
+                // 根据模式判断是否允许删除
+                $canDelete = false;
+                $blockReason = '';
+                
+                if ($deleteMode === 'any') {
+                    // 开放模式：任何状态都可删除（仍需检查状态和锁定）
+                    $canDelete = true;
+                } elseif ($deleteMode === 'current') {
+                    // 宽松模式：当前无解析记录即可删除
+                    if ($currentDnsExists) {
+                        $blockReason = 'current_dns';
+                    } else {
+                        $canDelete = true;
+                    }
+                } else {
+                    // 严格模式：有过解析历史则不允许删除
+                    if ($everHadDns) {
+                        $blockReason = 'history';
+                    } else {
+                        $canDelete = true;
                     }
                 }
 
@@ -1259,8 +1289,12 @@ if($_POST['action'] == 'delete_subdomain' && isset($_POST['subdomain_id'])) {
                 } elseif (intval($subdomain->gift_lock_id ?? 0) > 0) {
                     $msg = self::actionText('delete.gift_locked', '域名当前处于转赠/锁定状态，请先取消后再尝试删除。');
                     $msg_type = 'warning';
-                } elseif ($everHadDns) {
-                    $msg = self::actionText('delete.history_blocked', '仅允许从未设置解析记录的域名自助删除，如需协助请提交工单。');
+                } elseif (!$canDelete) {
+                    if ($blockReason === 'current_dns') {
+                        $msg = self::actionText('delete.current_dns_blocked', '请先删除所有DNS解析记录后再提交删除申请。');
+                    } else {
+                        $msg = self::actionText('delete.history_blocked', '仅允许从未设置解析记录的域名自助删除，如需协助请提交工单。');
+                    }
                     $msg_type = 'warning';
                 } else {
                     $now = date('Y-m-d H:i:s');
