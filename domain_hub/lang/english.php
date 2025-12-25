@@ -313,6 +313,8 @@ $_LANG['cfclient.actions.register.root_suspended'] = 'The root domain is no long
 $_LANG['cfclient.actions.register.provider_missing'] = 'No DNS provider is configured for this root domain. Please contact support.';
 $_LANG['cfclient.actions.register.provider_exists'] = 'DNS records already exist for this domain on the provider. Registration is not allowed.';
 $_LANG['cfclient.actions.register.success'] = 'Domain registered successfully.';
+$_LANG['cfclient.actions.register.vpn_blocked'] = 'VPN or proxy detected. Please disable it and try again.';
+$_LANG['cfclient.actions.register.datacenter_blocked'] = 'Your IP appears to be from a datacenter. Please use a residential network.';
 
 $_LANG['cfclient.breadcrumb.home'] = 'Home';
 $_LANG['cfclient.breadcrumb.client_page'] = 'My subdomain manager';

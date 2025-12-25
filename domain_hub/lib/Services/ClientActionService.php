@@ -451,6 +451,31 @@ if($_POST['action'] == "register") {
             $msg_type = 'danger';
             $registerError = $msg;
         } else {
+            // VPN/代理检测
+            $vpnCheckPassed = true;
+            $vpnCheckResult = null;
+            if (class_exists('CfVpnDetectionService') && CfVpnDetectionService::isEnabled($module_settings)) {
+                $clientIp = $_SERVER['REMOTE_ADDR'] ?? '';
+                $vpnCheckResult = CfVpnDetectionService::shouldBlockRegistration($clientIp, $module_settings);
+                if (!empty($vpnCheckResult['blocked'])) {
+                    $vpnCheckPassed = false;
+                    $msg = self::actionText('register.vpn_blocked', '检测到您正在使用VPN或代理，请关闭后再尝试注册域名。');
+                    $msg_type = 'warning';
+                    $registerError = $msg;
+                    // 记录日志
+                    if (function_exists('cloudflare_subdomain_log')) {
+                        cloudflare_subdomain_log('vpn_detection_blocked', [
+                            'ip' => $clientIp,
+                            'reason' => $vpnCheckResult['reason'] ?? 'unknown',
+                            'is_vpn' => $vpnCheckResult['is_vpn'] ?? false,
+                            'is_proxy' => $vpnCheckResult['is_proxy'] ?? false,
+                            'is_hosting' => $vpnCheckResult['is_hosting'] ?? false,
+                        ], $userid ?? 0, null);
+                    }
+                }
+            }
+
+            if ($vpnCheckPassed) {
             $subprefix = trim($_POST['subdomain']);
             $rootdomain = trim($_POST['rootdomain']);
             $subprefixLen = strlen($subprefix);
@@ -621,6 +646,7 @@ if($_POST['action'] == "register") {
                     } catch (Exception $e) {}
                 }
             }
+            } // end if ($vpnCheckPassed)
         }
     }
 }

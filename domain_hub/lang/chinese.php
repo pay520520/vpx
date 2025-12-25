@@ -312,6 +312,8 @@ $_LANG['cfclient.actions.register.root_suspended'] = '该根域名已停止新�
 $_LANG['cfclient.actions.register.provider_missing'] = '当前根域未配置有效的 DNS 供应商，请联系管理员';
 $_LANG['cfclient.actions.register.provider_exists'] = '该域名在阿里云DNS上已存在解析记录，无法注册';
 $_LANG['cfclient.actions.register.success'] = '域名注册成功';
+$_LANG['cfclient.actions.register.vpn_blocked'] = '检测到您正在使用VPN或代理，请关闭后再尝试注册域名。';
+$_LANG['cfclient.actions.register.datacenter_blocked'] = '检测到您的IP来自数据中心，请使用家庭网络注册。';
 
 $_LANG['cfclient.breadcrumb.home'] = '首页';
 $_LANG['cfclient.breadcrumb.client_page'] = '我的二级域名管理';
