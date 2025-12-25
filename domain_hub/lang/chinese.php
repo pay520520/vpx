@@ -315,6 +315,7 @@ $_LANG['cfclient.actions.register.success'] = '域名注册成功';
 $_LANG['cfclient.actions.register.vpn_blocked'] = '检测到您正在使用VPN或代理，请关闭后再尝试注册域名。';
 $_LANG['cfclient.actions.register.datacenter_blocked'] = '检测到您的IP来自数据中心，请使用家庭网络注册。';
 $_LANG['cfclient.actions.dns.vpn_blocked'] = '检测到您正在使用VPN或代理，请关闭后再进行DNS操作。';
+$_LANG['cfclient.js.dns.vpn_blocked'] = '检测到您正在使用VPN或代理，请关闭后再进行DNS操作。';
 
 $_LANG['cfclient.breadcrumb.home'] = '首页';
 $_LANG['cfclient.breadcrumb.client_page'] = '我的二级域名管理';

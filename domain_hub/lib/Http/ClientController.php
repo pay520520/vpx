@@ -335,6 +335,41 @@ class CfClientController
                                 self::respondAjaxRateLimitError($e);
                             }
 
+                            // VPN检测（AJAX）- 用于前端弹窗时预检
+                            if ($action === 'ajax_check_vpn') {
+                                header('Content-Type: application/json; charset=utf-8');
+                                $settings = cf_get_module_settings_cached();
+                                
+                                // 检查DNS操作VPN检测是否启用
+                                if (!class_exists('CfVpnDetectionService') || !CfVpnDetectionService::isDnsCheckEnabled($settings)) {
+                                    echo json_encode(['success' => true, 'blocked' => false, 'reason' => 'disabled']);
+                                    exit;
+                                }
+                                
+                                $clientIp = $_SERVER['REMOTE_ADDR'] ?? '';
+                                $vpnCheckResult = CfVpnDetectionService::shouldBlockDnsOperation($clientIp, $settings);
+                                
+                                if (!empty($vpnCheckResult['blocked'])) {
+                                    if (function_exists('cloudflare_subdomain_log')) {
+                                        cloudflare_subdomain_log('vpn_detection_ajax_check', [
+                                            'ip' => $clientIp,
+                                            'reason' => $vpnCheckResult['reason'] ?? 'unknown',
+                                            'blocked' => true,
+                                        ], $userId, null);
+                                    }
+                                    echo json_encode([
+                                        'success' => true,
+                                        'blocked' => true,
+                                        'reason' => $vpnCheckResult['reason'] ?? 'vpn_proxy',
+                                        'message' => self::actionText('dns.vpn_blocked', '检测到您正在使用VPN或代理，请关闭后再进行DNS操作。')
+                                    ]);
+                                    exit;
+                                }
+                                
+                                echo json_encode(['success' => true, 'blocked' => false]);
+                                exit;
+                            }
+
                             // 创建API密钥
                             if ($action === 'ajax_create_api_key') {
                                 try {

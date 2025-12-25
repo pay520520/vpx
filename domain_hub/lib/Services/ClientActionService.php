@@ -1854,6 +1854,27 @@ if($_POST['action'] == 'replace_ns_group' && isset($_POST['subdomain_id'])) {
             'registerError' => $registerError,
         ];
     }
+    // VPN/代理检测（NS替换操作）
+    if (class_exists('CfVpnDetectionService') && CfVpnDetectionService::isDnsCheckEnabled($module_settings)) {
+        $clientIp = $_SERVER['REMOTE_ADDR'] ?? '';
+        $vpnCheckResult = CfVpnDetectionService::shouldBlockDnsOperation($clientIp, $module_settings);
+        if (!empty($vpnCheckResult['blocked'])) {
+            $msg = self::actionText('dns.vpn_blocked', '检测到您正在使用VPN或代理，请关闭后再进行DNS操作。');
+            $msg_type = 'warning';
+            if (function_exists('cloudflare_subdomain_log')) {
+                cloudflare_subdomain_log('vpn_detection_blocked_dns', [
+                    'action' => 'replace_ns_group',
+                    'ip' => $clientIp,
+                    'reason' => $vpnCheckResult['reason'] ?? 'unknown',
+                ], $userid ?? 0, null);
+            }
+            return [
+                'msg' => $msg,
+                'msg_type' => $msg_type,
+                'registerError' => $registerError,
+            ];
+        }
+    }
     if (!$disableNsManagement && !$disableDnsWrite && self::shouldUseAsyncDns('replace_ns_group', $module_settings, $isAsyncReplay)) {
         $jobId = self::enqueueAsyncDnsJob(intval($userid ?? 0), 'replace_ns_group');
         $msg = self::formatAsyncQueuedMessage($jobId);
