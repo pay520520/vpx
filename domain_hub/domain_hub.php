@@ -1671,6 +1671,45 @@ function domain_hub_config() {
                 "Default" => "no",
                 "Description" => "开启后，WHMCS Cron 会直接执行队列任务。建议保持关闭，并通过 CLI worker（worker.php）独立运行队列，避免 Cron 被长任务阻塞。",
             ],
+            // VPN/代理检测配置
+            "enable_vpn_detection" => [
+                "FriendlyName" => "启用VPN/代理检测",
+                "Type" => "yesno",
+                "Default" => "no",
+                "Description" => "开启后，用户注册域名时将检测IP是否为VPN/代理，若检测到则阻止注册。使用 ip-api.com 免费API（45次/分钟）。",
+            ],
+            "vpn_detection_block_vpn" => [
+                "FriendlyName" => "阻止VPN/代理用户",
+                "Type" => "yesno",
+                "Default" => "yes",
+                "Description" => "检测到VPN或代理时阻止注册。",
+            ],
+            "vpn_detection_block_hosting" => [
+                "FriendlyName" => "阻止数据中心IP",
+                "Type" => "yesno",
+                "Default" => "no",
+                "Description" => "检测到来自云服务商/数据中心的IP时阻止注册（可能误伤使用云服务器的用户）。",
+            ],
+            "vpn_detection_ip_whitelist" => [
+                "FriendlyName" => "VPN检测IP白名单",
+                "Type" => "textarea",
+                "Rows" => "4",
+                "Cols" => "50",
+                "Description" => "每行一个IP或CIDR（如192.168.1.0/24），白名单内的IP跳过VPN检测。",
+            ],
+            "vpn_detection_cache_hours" => [
+                "FriendlyName" => "检测结果缓存时长（小时）",
+                "Type" => "text",
+                "Size" => "4",
+                "Default" => "24",
+                "Description" => "同一IP检测结果的缓存时长（1-720小时，即最多30天），减少API调用次数。建议12-48小时。",
+            ],
+            "vpn_detection_dns_enabled" => [
+                "FriendlyName" => "DNS操作启用VPN检测",
+                "Type" => "yesno",
+                "Default" => "no",
+                "Description" => "开启后，用户添加/修改/删除DNS记录时也将检测VPN/代理。",
+            ],
         ]
     ];
 }

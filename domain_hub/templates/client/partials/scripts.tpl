@@ -96,7 +96,7 @@ const dnsUnlockRequired = dnsUnlockFeatureEnabled && <?php echo !empty($dnsUnloc
             }
         });
         
-        // DNS设置模态框
+        // DNS设置模态框 - VPN检测由后端处理（仅NS记录需要检测）
         function showDnsForm(subdomainId, subdomainName, isUpdate, recordId = '', recordName = '', recordType = '', recordContent = '') {
             document.getElementById('dns_subdomain_id').value = subdomainId;
             document.getElementById('dns_subdomain_name').value = subdomainName;
@@ -199,6 +199,40 @@ function copyDnsUnlockCode() {
 }
 window.copyDnsUnlockCode = copyDnsUnlockCode;
 
+// VPN检测配置
+const vpnDetectionDnsEnabled = <?php echo (!empty($vpnDetectionDnsEnabled) ? 'true' : 'false'); ?>;
+
+// VPN检测AJAX函数
+function checkVpnBeforeAction(callback) {
+    if (!vpnDetectionDnsEnabled) {
+        callback(false);
+        return;
+    }
+    var moduleSlug = (window.CF_CLIENT_CONFIG && window.CF_CLIENT_CONFIG.moduleSlug) || 'domain_hub';
+    var ajaxUrl = 'index.php?m=' + encodeURIComponent(moduleSlug) + '&action=ajax_check_vpn';
+    fetch(ajaxUrl, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': window.CF_MOD_CSRF || ''
+        }
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+        if (data.blocked) {
+            alert(data.message || cfLang('dnsVpnBlocked', '检测到您正在使用VPN或代理，请关闭后再进行DNS操作。'));
+            callback(true);
+        } else {
+            callback(false);
+        }
+    })
+    .catch(function(err) {
+        // 网络错误时不阻止操作
+        console.error('VPN check failed:', err);
+        callback(false);
+    });
+}
+
 // NS 批量替换：弹窗打开/归一化
 function showNsModal(subId, name) {
     if (dnsUnlockFeatureEnabled && dnsUnlockRequired) {
@@ -211,14 +245,20 @@ function showNsModal(subId, name) {
         return;
     }
 
-    document.getElementById('ns_subdomain_id').value = subId;
-    document.getElementById('ns_subdomain_name').value = name;
-    // 预填当前NS
-    const current = (window.__nsBySubId && window.__nsBySubId[subId]) ? window.__nsBySubId[subId] : [];
-    document.getElementById('ns_current').textContent = current.length ? current.join(', ') : cfLang('nsNotConfigured', '（未设置）');
-    document.getElementById('ns_lines').value = current.join('\n');
-    const modal = new bootstrap.Modal(document.getElementById('nsModal'));
-    modal.show();
+    // VPN检测
+    checkVpnBeforeAction(function(blocked) {
+        if (blocked) {
+            return;
+        }
+        document.getElementById('ns_subdomain_id').value = subId;
+        document.getElementById('ns_subdomain_name').value = name;
+        // 预填当前NS
+        const current = (window.__nsBySubId && window.__nsBySubId[subId]) ? window.__nsBySubId[subId] : [];
+        document.getElementById('ns_current').textContent = current.length ? current.join(', ') : cfLang('nsNotConfigured', '（未设置）');
+        document.getElementById('ns_lines').value = current.join('\n');
+        const modal = new bootstrap.Modal(document.getElementById('nsModal'));
+        modal.show();
+    });
 }
 
 document.getElementById('nsForm')?.addEventListener('submit', function(e){

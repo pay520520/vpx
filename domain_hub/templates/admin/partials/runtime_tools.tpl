@@ -154,6 +154,16 @@ $cfmodOrphanRootOptionsHtml = implode("\n", $orphanRootOptions);
         </div>
       </div>
       <div class="col-12 col-md-4">
+        <label class="form-label" for="client_delete_mode">自助删除模式</label>
+        <?php $currentDeleteMode = $module_settings['client_delete_mode'] ?? 'strict'; ?>
+        <select class="form-select form-select-sm" id="client_delete_mode" name="client_delete_mode">
+          <option value="strict" <?php echo $currentDeleteMode === 'strict' ? 'selected' : ''; ?>>严格模式（有过解析历史不可删）</option>
+          <option value="current" <?php echo $currentDeleteMode === 'current' ? 'selected' : ''; ?>>宽松模式（当前无解析即可删）</option>
+          <option value="any" <?php echo $currentDeleteMode === 'any' ? 'selected' : ''; ?>>开放模式（任何状态都可删）</option>
+        </select>
+        <small class="text-muted">控制用户自助删除域名的条件限制</small>
+      </div>
+      <div class="col-12 col-md-4">
         <div class="form-check form-switch">
           <input class="form-check-input" type="checkbox" id="sync_invite_limit_up_only" name="sync_invite_limit_up_only" value="1" <?php echo (isset($module_settings['sync_invite_limit_up_only']) && in_array($module_settings['sync_invite_limit_up_only'], ['1','on'], true)) ? 'checked' : ''; ?>>
           <label class="form-check-label" for="sync_invite_limit_up_only"><?php echo htmlspecialchars($syncInviteLabel); ?></label>

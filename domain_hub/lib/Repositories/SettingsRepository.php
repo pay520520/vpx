@@ -111,6 +111,7 @@ class CfSettingsRepository
             'whois_default_nameservers' => '',
             'whois_rate_limit_per_minute' => '2',
             'enable_client_domain_delete' => '0',
+            'client_delete_mode' => 'strict',
             'domain_cleanup_interval_hours' => '24',
         ];
 

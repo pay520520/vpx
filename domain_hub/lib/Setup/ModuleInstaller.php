@@ -700,6 +700,23 @@ class CfModuleInstaller
                         Capsule::statement('ALTER TABLE `mod_cloudflare_whois_rate_limit` ADD UNIQUE INDEX `uniq_cf_whois_ip_window` (`ip`, `window_key`)');
                     }
                 }
+
+                // VPN/代理检测缓存表
+                if (!Capsule::schema()->hasTable('mod_cloudflare_vpn_cache')) {
+                    Capsule::schema()->create('mod_cloudflare_vpn_cache', function ($table) {
+                        $table->increments('id');
+                        $table->string('ip_hash', 64)->unique();
+                        $table->tinyInteger('is_blocked')->default(0);
+                        $table->string('reason', 32)->nullable();
+                        $table->tinyInteger('is_vpn')->default(0);
+                        $table->tinyInteger('is_proxy')->default(0);
+                        $table->tinyInteger('is_hosting')->default(0);
+                        $table->dateTime('checked_at');
+                        $table->dateTime('expires_at');
+                        $table->dateTime('created_at');
+                        $table->index('expires_at');
+                    });
+                }
         
                 try {
                     cfmod_sync_default_provider_account(cf_get_module_settings_cached());
@@ -751,6 +768,7 @@ class CfModuleInstaller
                 Capsule::schema()->dropIfExists('mod_cloudflare_api_rate_limit');
                 Capsule::schema()->dropIfExists('mod_cloudflare_rate_limits');
                 Capsule::schema()->dropIfExists('mod_cloudflare_whois_rate_limit');
+                Capsule::schema()->dropIfExists('mod_cloudflare_vpn_cache');
                 Capsule::schema()->dropIfExists('mod_cloudflare_provider_accounts');
                 return ['status'=>'success','description'=>'插件已完全卸载，数据已删除'];
             } catch (\Exception $e) {

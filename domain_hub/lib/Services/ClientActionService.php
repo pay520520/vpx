@@ -451,6 +451,31 @@ if($_POST['action'] == "register") {
             $msg_type = 'danger';
             $registerError = $msg;
         } else {
+            // VPN/代理检测
+            $vpnCheckPassed = true;
+            $vpnCheckResult = null;
+            if (class_exists('CfVpnDetectionService') && CfVpnDetectionService::isEnabled($module_settings)) {
+                $clientIp = $_SERVER['REMOTE_ADDR'] ?? '';
+                $vpnCheckResult = CfVpnDetectionService::shouldBlockRegistration($clientIp, $module_settings);
+                if (!empty($vpnCheckResult['blocked'])) {
+                    $vpnCheckPassed = false;
+                    $msg = self::actionText('register.vpn_blocked', '检测到您正在使用VPN或代理，请关闭后再尝试注册域名。');
+                    $msg_type = 'warning';
+                    $registerError = $msg;
+                    // 记录日志
+                    if (function_exists('cloudflare_subdomain_log')) {
+                        cloudflare_subdomain_log('vpn_detection_blocked', [
+                            'ip' => $clientIp,
+                            'reason' => $vpnCheckResult['reason'] ?? 'unknown',
+                            'is_vpn' => $vpnCheckResult['is_vpn'] ?? false,
+                            'is_proxy' => $vpnCheckResult['is_proxy'] ?? false,
+                            'is_hosting' => $vpnCheckResult['is_hosting'] ?? false,
+                        ], $userid ?? 0, null);
+                    }
+                }
+            }
+
+            if ($vpnCheckPassed) {
             $subprefix = trim($_POST['subdomain']);
             $rootdomain = trim($_POST['rootdomain']);
             $subprefixLen = strlen($subprefix);
@@ -621,6 +646,7 @@ if($_POST['action'] == "register") {
                     } catch (Exception $e) {}
                 }
             }
+            } // end if ($vpnCheckPassed)
         }
     }
 }
@@ -853,6 +879,28 @@ if($_POST['action'] == "create_dns" && isset($_POST['subdomain_id'])) {
                 'msg_type' => $msg_type,
                 'registerError' => $registerError,
             ];
+        }
+        // VPN/代理检测（仅NS记录）
+        if ($record_type_upper === 'NS' && class_exists('CfVpnDetectionService') && CfVpnDetectionService::isDnsCheckEnabled($module_settings)) {
+            $clientIp = $_SERVER['REMOTE_ADDR'] ?? '';
+            $vpnCheckResult = CfVpnDetectionService::shouldBlockDnsOperation($clientIp, $module_settings);
+            if (!empty($vpnCheckResult['blocked'])) {
+                $msg = self::actionText('dns.vpn_blocked', '检测到您正在使用VPN或代理，请关闭后再进行DNS操作。');
+                $msg_type = 'warning';
+                if (function_exists('cloudflare_subdomain_log')) {
+                    cloudflare_subdomain_log('vpn_detection_blocked_dns', [
+                        'action' => 'create_dns',
+                        'type' => 'NS',
+                        'ip' => $clientIp,
+                        'reason' => $vpnCheckResult['reason'] ?? 'unknown',
+                    ], $userid ?? 0, null);
+                }
+                return [
+                    'msg' => $msg,
+                    'msg_type' => $msg_type,
+                    'registerError' => $registerError,
+                ];
+            }
         }
         if ($isUserBannedOrInactive) {
             $msg = self::actionText('dns.create.banned', '您的账号已被封禁或停用，禁止创建DNS记录。') . ($banReasonText ? (' ' . $banReasonText) : '');
@@ -1188,17 +1236,47 @@ if($_POST['action'] == 'delete_subdomain' && isset($_POST['subdomain_id'])) {
                 $msg_type = 'warning';
             } else {
                 $statusLower = strtolower((string)($subdomain->status ?? ''));
+                
+                // 获取自助删除模式配置
+                $deleteMode = strtolower(trim($module_settings['client_delete_mode'] ?? 'strict'));
+                if (!in_array($deleteMode, ['strict', 'current', 'any'], true)) {
+                    $deleteMode = 'strict';
+                }
+                
+                // 检查DNS历史和当前解析记录
                 $everHadDns = intval($subdomain->has_dns_history ?? 0) === 1;
-                if (!$everHadDns) {
-                    try {
-                        $currentDnsExists = Capsule::table('mod_cloudflare_dns_records')
-                            ->where('subdomain_id', $subdomainId)
-                            ->exists();
-                        if ($currentDnsExists) {
-                            $everHadDns = true;
-                            CfSubdomainService::markHasDnsHistory($subdomainId);
-                        }
-                    } catch (\Throwable $e) {
+                $currentDnsExists = false;
+                try {
+                    $currentDnsExists = Capsule::table('mod_cloudflare_dns_records')
+                        ->where('subdomain_id', $subdomainId)
+                        ->exists();
+                    if ($currentDnsExists && !$everHadDns) {
+                        $everHadDns = true;
+                        CfSubdomainService::markHasDnsHistory($subdomainId);
+                    }
+                } catch (\Throwable $e) {
+                }
+                
+                // 根据模式判断是否允许删除
+                $canDelete = false;
+                $blockReason = '';
+                
+                if ($deleteMode === 'any') {
+                    // 开放模式：任何状态都可删除（仍需检查状态和锁定）
+                    $canDelete = true;
+                } elseif ($deleteMode === 'current') {
+                    // 宽松模式：当前无解析记录即可删除
+                    if ($currentDnsExists) {
+                        $blockReason = 'current_dns';
+                    } else {
+                        $canDelete = true;
+                    }
+                } else {
+                    // 严格模式：有过解析历史则不允许删除
+                    if ($everHadDns) {
+                        $blockReason = 'history';
+                    } else {
+                        $canDelete = true;
                     }
                 }
 
@@ -1211,8 +1289,12 @@ if($_POST['action'] == 'delete_subdomain' && isset($_POST['subdomain_id'])) {
                 } elseif (intval($subdomain->gift_lock_id ?? 0) > 0) {
                     $msg = self::actionText('delete.gift_locked', '域名当前处于转赠/锁定状态，请先取消后再尝试删除。');
                     $msg_type = 'warning';
-                } elseif ($everHadDns) {
-                    $msg = self::actionText('delete.history_blocked', '仅允许从未设置解析记录的域名自助删除，如需协助请提交工单。');
+                } elseif (!$canDelete) {
+                    if ($blockReason === 'current_dns') {
+                        $msg = self::actionText('delete.current_dns_blocked', '请先删除所有DNS解析记录后再提交删除申请。');
+                    } else {
+                        $msg = self::actionText('delete.history_blocked', '仅允许从未设置解析记录的域名自助删除，如需协助请提交工单。');
+                    }
                     $msg_type = 'warning';
                 } else {
                     $now = date('Y-m-d H:i:s');
@@ -1269,6 +1351,28 @@ if($_POST['action'] == "update_dns" && isset($_POST['subdomain_id'])) {
                 'msg_type' => $msg_type,
                 'registerError' => $registerError,
             ];
+        }
+        // VPN/代理检测（仅NS记录）
+        if ($record_type_upper === 'NS' && class_exists('CfVpnDetectionService') && CfVpnDetectionService::isDnsCheckEnabled($module_settings)) {
+            $clientIp = $_SERVER['REMOTE_ADDR'] ?? '';
+            $vpnCheckResult = CfVpnDetectionService::shouldBlockDnsOperation($clientIp, $module_settings);
+            if (!empty($vpnCheckResult['blocked'])) {
+                $msg = self::actionText('dns.vpn_blocked', '检测到您正在使用VPN或代理，请关闭后再进行DNS操作。');
+                $msg_type = 'warning';
+                if (function_exists('cloudflare_subdomain_log')) {
+                    cloudflare_subdomain_log('vpn_detection_blocked_dns', [
+                        'action' => 'update_dns',
+                        'type' => 'NS',
+                        'ip' => $clientIp,
+                        'reason' => $vpnCheckResult['reason'] ?? 'unknown',
+                    ], $userid ?? 0, null);
+                }
+                return [
+                    'msg' => $msg,
+                    'msg_type' => $msg_type,
+                    'registerError' => $registerError,
+                ];
+            }
         }
 
         if ($isUserBannedOrInactive) {
@@ -1644,7 +1748,7 @@ if($_POST['action'] == "toggle_record_cdn" && isset($_POST['subdomain_id']) && i
     }
 }
 
-// 处理DNS记录删除请求（仅删除某条记录）
+// 处理DNS记录删除请求（仅删除某条记录）- 删除操作不检测VPN
 if($_POST['action'] == "delete_dns_record" && isset($_POST['record_id']) && isset($_POST['subdomain_id'])) {
     if ($isUserBannedOrInactive) {
         $msg = self::actionText('dns.delete.banned', '您的账号已被封禁或停用，禁止删除DNS记录。') . ($banReasonText ? (' ' . $banReasonText) : '');
@@ -1764,6 +1868,27 @@ if($_POST['action'] == 'replace_ns_group' && isset($_POST['subdomain_id'])) {
             'msg_type' => $msg_type,
             'registerError' => $registerError,
         ];
+    }
+    // VPN/代理检测（NS替换操作）
+    if (class_exists('CfVpnDetectionService') && CfVpnDetectionService::isDnsCheckEnabled($module_settings)) {
+        $clientIp = $_SERVER['REMOTE_ADDR'] ?? '';
+        $vpnCheckResult = CfVpnDetectionService::shouldBlockDnsOperation($clientIp, $module_settings);
+        if (!empty($vpnCheckResult['blocked'])) {
+            $msg = self::actionText('dns.vpn_blocked', '检测到您正在使用VPN或代理，请关闭后再进行DNS操作。');
+            $msg_type = 'warning';
+            if (function_exists('cloudflare_subdomain_log')) {
+                cloudflare_subdomain_log('vpn_detection_blocked_dns', [
+                    'action' => 'replace_ns_group',
+                    'ip' => $clientIp,
+                    'reason' => $vpnCheckResult['reason'] ?? 'unknown',
+                ], $userid ?? 0, null);
+            }
+            return [
+                'msg' => $msg,
+                'msg_type' => $msg_type,
+                'registerError' => $registerError,
+            ];
+        }
     }
     if (!$disableNsManagement && !$disableDnsWrite && self::shouldUseAsyncDns('replace_ns_group', $module_settings, $isAsyncReplay)) {
         $jobId = self::enqueueAsyncDnsJob(intval($userid ?? 0), 'replace_ns_group');

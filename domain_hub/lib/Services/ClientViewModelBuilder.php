@@ -88,6 +88,12 @@ class CfClientViewModelBuilder
         $globals['clientAnnounceCookieKey'] = 'cfmod_client_announce_' . substr(md5(($globals['clientAnnounceTitle'] ?: '') . '|' . ($globals['clientAnnounceHtml'] ?: '')), 0, 8);
         $globals['clientDeleteEnabled'] = cfmod_setting_enabled($moduleSettings['enable_client_domain_delete'] ?? '0');
 
+        // VPN检测配置
+        $vpnDetectionEnabled = cfmod_setting_enabled($moduleSettings['enable_vpn_detection'] ?? '0');
+        $vpnDetectionDnsEnabled = $vpnDetectionEnabled && cfmod_setting_enabled($moduleSettings['vpn_detection_dns_enabled'] ?? '0');
+        $globals['vpnDetectionEnabled'] = $vpnDetectionEnabled;
+        $globals['vpnDetectionDnsEnabled'] = $vpnDetectionDnsEnabled;
+
         $globals['max'] = intval($moduleSettings['max_subdomain_per_user'] ?? 5);
         if ($globals['max'] < 0) {
             $globals['max'] = 5;
