@@ -1702,7 +1702,7 @@ function domain_hub_config() {
                 "Type" => "text",
                 "Size" => "4",
                 "Default" => "24",
-                "Description" => "同一IP检测结果的缓存时长，减少API调用次数。建议12-48小时。",
+                "Description" => "同一IP检测结果的缓存时长（1-720小时，即最多30天），减少API调用次数。建议12-48小时。",
             ],
             "vpn_detection_dns_enabled" => [
                 "FriendlyName" => "DNS操作启用VPN检测",

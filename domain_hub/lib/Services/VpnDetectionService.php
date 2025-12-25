@@ -181,7 +181,7 @@ class CfVpnDetectionService
             return null;
         }
         
-        $cacheHours = max(1, (int)($settings['vpn_detection_cache_hours'] ?? 24));
+        $cacheHours = max(1, min(720, (int)($settings['vpn_detection_cache_hours'] ?? 24))); // 1小时-30天
         $ipHash = self::hashIp($ip);
         
         try {
@@ -216,7 +216,7 @@ class CfVpnDetectionService
             return;
         }
         
-        $cacheHours = max(1, (int)($settings['vpn_detection_cache_hours'] ?? 24));
+        $cacheHours = max(1, min(720, (int)($settings['vpn_detection_cache_hours'] ?? 24))); // 1小时-30天
         $ipHash = self::hashIp($ip);
         $now = date('Y-m-d H:i:s');
         $expiresAt = date('Y-m-d H:i:s', time() + $cacheHours * 3600);
